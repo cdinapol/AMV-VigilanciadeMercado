@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AMV · Vigilancia de Mercado — Prototipo Azure AI Foundry</title>
+<style>
+  :root{
+    --navy:#1b2a4a;
+    --navy-dark:#12203a;
+    --bg:#f3f5f9;
+    --card:#ffffff;
+    --line:#e2e6ee;
+    --text:#27324a;
+    --muted:#6b7488;
+
+    --mai-bg:#cff3e9;   --mai-border:#1f9d77; --mai-text:#0b3d2e;
+    --openai-bg:#dceefb; --openai-border:#2e75b6; --openai-text:#1b2a4a;
+    --azure-bg:#f1efea; --azure-border:#8a8474; --azure-text:#4a4433;
+    --gov-bg:#e5dff5;   --gov-border:#6a4fb6; --gov-text:#3b2a63;
+
+    --ok:#1f9d77;
+    --warn:#b8860b;
+    --danger:#c0392b;
+    --radius:12px;
+    --shadow:0 2px 10px rgba(20,30,60,.08);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    font-family:"Segoe UI",Arial,Helvetica,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+  }
+
+  /* ---------- Top bar ---------- */
+  header.topbar{
+    background:linear-gradient(90deg,var(--navy-dark),var(--navy));
+    color:#fff;
+    padding:14px 22px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand .logo{
+    width:38px;height:38px;border-radius:8px;background:#fff;color:var(--navy);
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;
+  }
+  .brand h1{font-size:16px;margin:0;font-weight:700;}
+  .brand p{margin:0;font-size:11.5px;color:#c7d0e6;}
+  .demo-tag{
+    background:rgba(255,255,255,.12);
+    border:1px solid rgba(255,255,255,.25);
+    padding:3px 10px;border-radius:20px;font-size:11px;letter-spacing:.03em;
+  }
+
+  .model-legend{
+    display:flex;gap:8px;flex-wrap:wrap;padding:8px 22px;
+    background:#fff;border-bottom:1px solid var(--line);
+    font-size:11.5px;
+  }
+  .chip{
+    display:flex;align-items:center;gap:6px;
+    padding:4px 10px;border-radius:20px;border:1.5px solid;
+    font-weight:600;white-space:nowrap;
+  }
+  .chip small{font-weight:400;opacity:.8;margin-left:2px;}
+  .chip.mai{background:var(--mai-bg);border-color:var(--mai-border);color:var(--mai-text);}
+  .chip.openai{background:var(--openai-bg);border-color:var(--openai-border);color:var(--openai-text);}
+  .chip.azure{background:var(--azure-bg);border-color:var(--azure-border);color:var(--azure-text);}
+  .chip.gov{background:var(--gov-bg);border-color:var(--gov-border);color:var(--gov-text);}
+
+  /* ---------- Layout ---------- */
+  .layout{
+    display:grid;
+    grid-template-columns:280px 1fr;
+    gap:16px;
+    padding:16px 22px 30px;
+    flex:1;
+    max-width:1440px;
+    margin:0 auto;
+    width:100%;
+  }
+  @media (max-width:900px){ .layout{grid-template-columns:1fr;} }
+
+  .panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{padding:16px;height:fit-content;position:sticky;top:16px;}
+  .sidebar h3{margin:0 0 8px;font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);}
+  .search-box{
+    display:flex;border:1.5px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:14px;
+  }
+  .search-box input{
+    border:none;padding:9px 10px;flex:1;font-size:13.5px;outline:none;
+  }
+  .search-box button{
+    border:none;background:var(--navy);color:#fff;padding:0 14px;cursor:pointer;font-size:13px;
+  }
+  .filters{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+  .filters select{
+    padding:7px 8px;border:1px solid var(--line);border-radius:7px;font-size:12.5px;color:var(--text);background:#fafbfd;
+  }
+  .case-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;}
+  .case-list li{
+    padding:10px;border-radius:8px;border:1px solid var(--line);cursor:pointer;font-size:12.5px;
+  }
+  .case-list li.active{border-color:var(--navy);background:#eef1fa;}
+  .case-list li .case-id{font-weight:700;color:var(--navy);display:block;font-size:12px;}
+  .case-list li .case-desc{color:var(--muted);}
+
+  /* ---------- Main ---------- */
+  .main{display:flex;flex-direction:column;gap:14px;}
+  .tabs{display:flex;gap:4px;padding:10px 10px 0;}
+  .tab-btn{
+    border:none;background:transparent;padding:10px 16px;font-size:13px;font-weight:600;
+    color:var(--muted);cursor:pointer;border-radius:8px 8px 0 0;
+  }
+  .tab-btn.active{color:var(--navy);background:#eef1fa;}
+  .tab-content{padding:16px 20px 22px;display:none;}
+  .tab-content.active{display:block;}
+
+  .result-item{
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;cursor:pointer;
+    transition:border-color .15s;
+  }
+  .result-item:hover{border-color:var(--navy);}
+  .result-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;font-size:11px;}
+  .badge{padding:2px 8px;border-radius:20px;font-weight:700;}
+  .badge.speaker{background:#eef1fa;color:var(--navy);}
+  .badge.symbol{background:#fdeeea;color:#a4432b;}
+  .badge.conf-high{background:#e4f7ee;color:var(--ok);}
+  .badge.conf-mid{background:#fff6df;color:var(--warn);}
+  .badge.conf-low{background:#fbe7e5;color:var(--danger);}
+  .badge.time{background:#f1efea;color:#5a5340;}
+  .result-text{font-size:13.5px;line-height:1.5;}
+  .result-text mark{background:#ffe89e;padding:0 2px;border-radius:3px;}
+
+  .segment-detail{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;}
+  @media (max-width:1100px){ .segment-detail{grid-template-columns:1fr;} }
+
+  .player{
+    background:#101a30;border-radius:10px;padding:14px;color:#fff;margin-bottom:14px;
+  }
+  .player .row{display:flex;align-items:center;gap:10px;font-size:12px;}
+  .player button.play{
+    width:34px;height:34px;border-radius:50%;border:none;background:#2e75b6;color:#fff;cursor:pointer;font-size:14px;
+  }
+  .track{flex:1;height:6px;background:#2a3a5c;border-radius:4px;position:relative;overflow:hidden;}
+  .track .fill{position:absolute;left:0;top:0;bottom:0;background:#2e75b6;}
+  .track .marker{
+    position:absolute;top:-4px;width:2px;height:14px;background:#ffd166;
+  }
+  .waveform{display:flex;align-items:flex-end;gap:2px;height:34px;margin-top:10px;}
+  .waveform span{flex:1;background:#3a4f7a;border-radius:2px;}
+  .waveform span.hot{background:#ffd166;}
+
+  .transcript-box{
+    background:#fafbfd;border:1px solid var(--line);border-radius:10px;padding:14px;font-size:13.5px;line-height:1.7;
+  }
+  .transcript-box mark{background:#ffe89e;border-radius:3px;padding:0 2px;}
+
+  .card-field{
+    display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px dashed var(--line);font-size:13px;
+  }
+  .card-field:last-child{border-bottom:none;}
+  .field-name{color:var(--muted);}
+  .field-value{font-weight:700;}
+  .conf-pill{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:8px;}
+  .conf-pill.high{background:#e4f7ee;color:var(--ok);}
+  .conf-pill.mid{background:#fff6df;color:var(--warn);}
+  .conf-pill.low{background:#fbe7e5;color:var(--danger);}
+
+  .corr-box{
+    margin-top:14px;padding:12px;border-radius:10px;font-size:12.5px;
+  }
+  .corr-box.match{background:#e4f7ee;border:1px solid var(--ok);color:#0b3d2e;}
+  .corr-box.nomatch{background:#fbe7e5;border:1px solid var(--danger);color:#5c1f18;}
+
+  .synth-panel{}
+  .synth-actions{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+  .btn{
+    border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;
+  }
+  .btn-primary{background:var(--mai-border);color:#fff;}
+  .btn-secondary{background:#eef1fa;color:var(--navy);}
+  .btn:disabled{opacity:.6;cursor:not-allowed;}
+  .spinner{
+    width:16px;height:16px;border-radius:50%;border:2.5px solid #cfe;border-top-color:var(--mai-border);
+    animation:spin 0.8s linear infinite;display:inline-block;vertical-align:middle;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .report-box{
+    background:#fafbfd;border:1px solid var(--line);border-radius:10px;padding:16px;font-size:13.5px;line-height:1.75;
+  }
+  .report-box textarea{
+    width:100%;min-height:220px;border:1px solid var(--line);border-radius:8px;padding:12px;font-size:13.5px;
+    font-family:inherit;line-height:1.7;
+  }
+  .cite{
+    color:var(--mai-text);background:var(--mai-bg);border:1px solid var(--mai-border);
+    padding:0 5px;border-radius:5px;font-size:11.5px;font-weight:700;cursor:pointer;
+  }
+  .report-footer{display:flex;align-items:center;justify-content:space-between;margin-top:14px;flex-wrap:wrap;gap:10px;}
+  .groundedness{font-size:12px;color:var(--muted);}
+  .review-check{display:flex;align-items:center;gap:8px;font-size:12.5px;}
+
+  .custody-log{
+    margin-top:16px;font-size:11.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;
+  }
+  .custody-log ul{margin:6px 0 0;padding-left:16px;}
+  .custody-log li{margin-bottom:3px;}
+
+  /* ---------- CRUD: gestión de datos ---------- */
+  .manage-block{margin-bottom:26px;}
+  .manage-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px;}
+  .manage-header h3{margin:0;font-size:13.5px;color:var(--navy);}
+  .data-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px;}
+  .data-table th,.data-table td{padding:8px 7px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;}
+  .data-table th{color:var(--muted);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;}
+  .data-table td.actions{white-space:nowrap;}
+  .data-table button{border:none;background:none;cursor:pointer;font-size:12px;padding:3px 7px;border-radius:6px;}
+  .data-table button.edit{color:var(--openai-border);}
+  .data-table button.edit:hover{background:var(--openai-bg);}
+  .data-table button.delete{color:var(--danger);}
+  .data-table button.delete:hover{background:#fbe7e5;}
+  .data-table tr:hover{background:#fafbfd;}
+  .mini-form{
+    background:#fafbfd;border:1px solid var(--line);border-radius:10px;padding:14px;margin:10px 0 6px;
+    display:grid;grid-template-columns:repeat(4,1fr);gap:10px 12px;
+  }
+  .mini-form label{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:4px;font-weight:600;}
+  .mini-form input,.mini-form textarea{
+    padding:7px 8px;border:1px solid var(--line);border-radius:7px;font-size:12.5px;font-family:inherit;font-weight:400;color:var(--text);
+  }
+  .mini-form .full{grid-column:1/-1;}
+  .mini-form textarea{min-height:56px;resize:vertical;}
+  .mini-form .checkbox-field{flex-direction:row;align-items:center;gap:6px;}
+  .mini-form-actions{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;}
+  @media (max-width:800px){ .mini-form{grid-template-columns:1fr 1fr;} }
+
+  footer.disclaimer{
+    text-align:center;font-size:11px;color:var(--muted);padding:14px;
+  }
+
+  .empty-state{color:var(--muted);font-size:13px;padding:30px 10px;text-align:center;}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">AMV</div>
+    <div>
+      <h1>Vigilancia de Mercado · Workbench de Investigación</h1>
+      <p>Arquitectura de referencia sobre Azure AI Foundry · Autorregulador del Mercado de Valores</p>
+    </div>
+  </div>
+  <div class="demo-tag">Prototipo — datos simulados</div>
+</header>
+
+<div class="model-legend">
+  <span class="chip azure">🎙️ Transcripción <small>Azure AI Speech</small></span>
+  <span class="chip openai">🧩 Extracción estructurada <small>GPT-4o</small></span>
+  <span class="chip openai">🔎 Búsqueda semántica <small>text-embedding-3-large</small></span>
+  <span class="chip mai">🧠 Síntesis / redacción de hallazgos <small>MAI-1</small></span>
+  <span class="chip gov">🛡️ Gobierno <small>Microsoft Purview · Entra ID</small></span>
+</div>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="panel sidebar">
+    <h3>Buscar en conversaciones</h3>
+    <div class="search-box">
+      <input id="searchInput" type="text" placeholder="símbolo, palabra, hablante…" value="ACSA">
+      <button onclick="runSearch()">Buscar</button>
+    </div>
+    <div class="filters">
+      <select id="filterSpeaker">
+        <option value="">Todos los hablantes</option>
+        <option value="C. Mendoza">C. Mendoza</option>
+        <option value="J. Rivas">J. Rivas</option>
+      </select>
+      <select id="filterConfidence">
+        <option value="">Cualquier confianza</option>
+        <option value="high">Alta (≥ 85%)</option>
+        <option value="mid">Media (65–84%)</option>
+        <option value="low">Baja (&lt; 65%)</option>
+      </select>
+    </div>
+
+    <h3>Expedientes de investigación</h3>
+    <ul class="case-list" id="caseList"></ul>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="panel main">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tab-results" onclick="switchTab('tab-results')">Resultados de búsqueda</button>
+      <button class="tab-btn" data-tab="tab-detail" onclick="switchTab('tab-detail')">Detalle de segmento</button>
+      <button class="tab-btn" data-tab="tab-synth" onclick="switchTab('tab-synth')">Síntesis de hallazgos (MAI)</button>
+      <button class="tab-btn" data-tab="tab-manage" onclick="switchTab('tab-manage')">Gestionar datos</button>
+    </div>
+
+    <!-- RESULTS TAB -->
+    <section class="tab-content active" id="tab-results">
+      <div id="resultsContainer"></div>
+    </section>
+
+    <!-- DETAIL TAB -->
+    <section class="tab-content" id="tab-detail">
+      <div id="detailContainer">
+        <div class="empty-state">Selecciona un resultado de búsqueda para ver el detalle del segmento.</div>
+      </div>
+    </section>
+
+    <!-- SYNTHESIS TAB -->
+    <section class="tab-content" id="tab-synth">
+      <div class="synth-panel">
+        <p style="font-size:13px;color:var(--muted);margin-top:0;">
+          El Foundry Agent Service correlaciona los hallazgos marcados con la información
+          transaccional y solicita a <strong>MAI-1</strong> un borrador de informe citado.
+          El resultado siempre requiere revisión humana antes de convertirse en evidencia.
+        </p>
+        <div class="synth-actions">
+          <button class="btn btn-primary" id="genBtn" onclick="generateSynthesis()">🧠 Generar síntesis con MAI-1</button>
+          <span id="genStatus" style="font-size:12.5px;color:var(--muted);"></span>
+        </div>
+        <div id="reportContainer"></div>
+      </div>
+    </section>
+
+    <!-- MANAGE (CRUD) TAB -->
+    <section class="tab-content" id="tab-manage">
+      <p style="font-size:12.5px;color:var(--muted);margin-top:0;">
+        Datos guardados localmente en este navegador (localStorage) — no se envían a ningún servidor.
+        Los cambios se reflejan de inmediato en Búsqueda y Detalle.
+      </p>
+
+      <div class="manage-block">
+        <div class="manage-header">
+          <h3>Expedientes de investigación</h3>
+          <button class="btn btn-secondary" onclick="showCaseForm()">+ Nuevo expediente</button>
+        </div>
+        <div id="caseFormWrap"></div>
+        <table class="data-table" id="caseTable"></table>
+      </div>
+
+      <div class="manage-block">
+        <div class="manage-header">
+          <h3>Segmentos de conversación</h3>
+          <button class="btn btn-secondary" onclick="showSegmentForm()">+ Nuevo segmento</button>
+        </div>
+        <div id="segmentFormWrap"></div>
+        <table class="data-table" id="segmentTable"></table>
+      </div>
+
+      <button class="btn btn-secondary" onclick="resetDemoData()">↺ Restaurar datos de ejemplo</button>
+    </section>
+
+    <div class="custody-log">
+      <strong>Cadena de custodia (registro de auditoría)</strong>
+      <ul id="custodyLog"></ul>
+    </div>
+  </main>
+</div>
+
+<footer class="disclaimer">
+  Prototipo de demostración con datos ficticios — no representa una investigación real de AMV.
+  Arquitectura de referencia: Azure Blob Storage · Event Grid · Azure AI Speech · Azure AI Language ·
+  GPT-4o · Azure AI Search · Azure AI Foundry Agent Service · MAI-1 · Microsoft Purview.
+</footer>
+
+<script>
+/* ---------------------- Mock data (seed / valores de fábrica) ---------------------- */
+const LS_CASES = "amv_demo_cases_v1";
+const LS_SEGMENTS = "amv_demo_segments_v1";
+
+const SEED_CASES = [
+  { id:"INV-2026-014", desc:"Posible colusión · símbolo ACSA", active:true },
+  { id:"INV-2026-021", desc:"Uso de información privilegiada · símbolo TRX", active:false },
+];
+
+const SEED_SEGMENTS = [
+  {
+    id:1, recording:"REC-0091", speaker:"C. Mendoza", symbol:"ACSA",
+    date:"14/09/2026", time:"09:32:07", confidence:92,
+    text:"Oye, antes de que abra el mercado, no muevas el precio de ACSA. Espera a que yo entre con el bloque grande.",
+    highlight:"ACSA",
+    entities:{ instrumento:{v:"ACSA", c:95}, contraparte:{v:"Fondo Delta S.A.", c:88}, cantidad:{v:"120.000 acciones", c:74}, valor:{v:"$ 1.842 / acción", c:69} },
+    transactionMatch:true,
+  },
+  {
+    id:2, recording:"REC-0091", speaker:"J. Rivas", symbol:"ACSA",
+    date:"14/09/2026", time:"09:32:41", confidence:88,
+    text:"Entendido. Aviso a mesa que ACSA no se toca hasta las 9:45. Igual el anuncio de resultados sale a las 10.",
+    highlight:"ACSA",
+    entities:{ instrumento:{v:"ACSA", c:91}, contraparte:{v:"—", c:0}, cantidad:{v:"—", c:0}, valor:{v:"—", c:0} },
+    transactionMatch:false,
+  },
+  {
+    id:3, recording:"REC-0093", speaker:"C. Mendoza", symbol:"ACSA",
+    date:"14/09/2026", time:"09:44:52", confidence:61,
+    text:"Listo, ya está el bloque de ACSA cargado, ciento veinte mil títulos, a mil ochocientos cuarenta y dos.",
+    highlight:"ACSA",
+    entities:{ instrumento:{v:"ACSA", c:90}, contraparte:{v:"Fondo Delta S.A.", c:58}, cantidad:{v:"120.000 acciones", c:81}, valor:{v:"$ 1.842 / acción", c:77} },
+    transactionMatch:true,
+  },
+  {
+    id:4, recording:"REC-0093", speaker:"J. Rivas", symbol:"ACSA",
+    date:"14/09/2026", time:"09:45:10", confidence:95,
+    text:"Perfecto, en cuanto se publique el resultado subimos el precio objetivo, así salimos antes que el resto.",
+    highlight:"ACSA",
+    entities:{ instrumento:{v:"ACSA", c:85}, contraparte:{v:"—", c:0}, cantidad:{v:"—", c:0}, valor:{v:"—", c:0} },
+    transactionMatch:false,
+  },
+  {
+    id:5, recording:"REC-0097", speaker:"C. Mendoza", symbol:"TRX",
+    date:"14/09/2026", time:"11:02:15", confidence:70,
+    text:"Con TRX mejor no comentamos nada por acá, hablamos en persona.",
+    highlight:"TRX",
+    entities:{ instrumento:{v:"TRX", c:80}, contraparte:{v:"—", c:0}, cantidad:{v:"—", c:0}, valor:{v:"—", c:0} },
+    transactionMatch:false,
+  },
+];
+
+let CASES = [];
+let SEGMENTS = [];
+let currentSegmentId = null;
+let editingCaseId = null;
+let editingSegmentId = null;
+const custody = [];
+
+function escapeHtml(str){
+  return String(str ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/* ---------------------- Persistencia local (localStorage) ---------------------- */
+function loadData(){
+  const savedCases = localStorage.getItem(LS_CASES);
+  const savedSegments = localStorage.getItem(LS_SEGMENTS);
+  CASES = savedCases ? JSON.parse(savedCases) : JSON.parse(JSON.stringify(SEED_CASES));
+  SEGMENTS = savedSegments ? JSON.parse(savedSegments) : JSON.parse(JSON.stringify(SEED_SEGMENTS));
+}
+
+function saveData(){
+  localStorage.setItem(LS_CASES, JSON.stringify(CASES));
+  localStorage.setItem(LS_SEGMENTS, JSON.stringify(SEGMENTS));
+}
+
+function resetDemoData(){
+  if(!confirm("¿Restaurar los datos de ejemplo? Se perderán los cambios guardados localmente.")) return;
+  localStorage.removeItem(LS_CASES);
+  localStorage.removeItem(LS_SEGMENTS);
+  loadData();
+  renderAll();
+  logCustody("Datos de ejemplo restaurados (almacenamiento local reiniciado)");
+}
+
+function renderAll(){
+  renderCases();
+  runSearch();
+  renderCaseTable();
+  renderSegmentTable();
+}
+
+/* ---------------------- Init ---------------------- */
+function init(){
+  loadData();
+  renderAll();
+  document.getElementById("caseList").addEventListener("click", e => {
+    const li = e.target.closest("li[data-id]");
+    if(li) selectCase(li.dataset.id);
+  });
+  document.getElementById("caseTable").addEventListener("click", e => handleTableAction(e, "case"));
+  document.getElementById("segmentTable").addEventListener("click", e => handleTableAction(e, "segment"));
+  logCustody("Sesión iniciada por investigador (rol: Investigación de Mercado)");
+}
+
+function handleTableAction(e, kind){
+  const btn = e.target.closest("button[data-action]");
+  if(!btn) return;
+  const id = btn.dataset.id;
+  const action = btn.dataset.action;
+  if(kind === "case"){
+    if(action === "edit") showCaseForm(id);
+    if(action === "delete") deleteCase(id);
+  } else {
+    if(action === "edit") showSegmentForm(Number(id));
+    if(action === "delete") deleteSegment(Number(id));
+  }
+}
+
+function renderCases(){
+  const ul = document.getElementById("caseList");
+  ul.innerHTML = CASES.map(c => `
+    <li class="${c.active ? 'active':''}" data-id="${escapeHtml(c.id)}">
+      <span class="case-id">${escapeHtml(c.id)}</span>
+      <span class="case-desc">${escapeHtml(c.desc)}</span>
+    </li>`).join("");
+}
+
+function selectCase(id){
+  CASES.forEach(c => c.active = (c.id === id));
+  saveData();
+  renderCases();
+  logCustody(`Investigador abrió expediente ${id}`);
+}
+
+/* ---------------------- Search ---------------------- */
+function confBand(c){
+  if(c >= 85) return {cls:"conf-high", label:"Alta"};
+  if(c >= 65) return {cls:"conf-mid", label:"Media"};
+  return {cls:"conf-low", label:"Baja"};
+}
+
+function runSearch(){
+  const q = document.getElementById("searchInput").value.trim().toLowerCase();
+  const speakerFilter = document.getElementById("filterSpeaker").value;
+  const confFilter = document.getElementById("filterConfidence").value;
+
+  let results = SEGMENTS.filter(s => {
+    const matchesQuery = !q || s.text.toLowerCase().includes(q) || s.symbol.toLowerCase().includes(q) || s.speaker.toLowerCase().includes(q);
+    const matchesSpeaker = !speakerFilter || s.speaker === speakerFilter;
+    const band = confBand(s.confidence);
+    const matchesConf = !confFilter || band.cls === "conf-" + confFilter;
+    return matchesQuery && matchesSpeaker && matchesConf;
+  });
+
+  renderResults(results, q);
+  logCustody(`Búsqueda ejecutada: "${q || '(vacía)'}" → ${results.length} resultado(s) [Azure AI Search: BM25 + vectorial + semántico]`);
+}
+
+function highlightText(text, term){
+  const escaped = escapeHtml(text);
+  if(!term) return escaped;
+  const re = new RegExp("(" + escapeHtml(term).replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ")", "ig");
+  return escaped.replace(re, "<mark>$1</mark>");
+}
+
+function renderResults(results, q){
+  const container = document.getElementById("resultsContainer");
+  if(results.length === 0){
+    container.innerHTML = `<div class="empty-state">No se encontraron segmentos para esta búsqueda.</div>`;
+    return;
+  }
+  container.innerHTML = results.map(s => {
+    const band = confBand(s.confidence);
+    return `
+    <div class="result-item" onclick="openSegment(${s.id})">
+      <div class="result-meta">
+        <span class="badge speaker">${escapeHtml(s.speaker)}</span>
+        <span class="badge symbol">${escapeHtml(s.symbol)}</span>
+        <span class="badge time">${escapeHtml(s.date)} · ${escapeHtml(s.time)}</span>
+        <span class="badge ${band.cls}">Confianza ${band.label} (${s.confidence}%)</span>
+      </div>
+      <div class="result-text">${highlightText(s.text, q)}</div>
+    </div>`;
+  }).join("");
+}
+
+/* ---------------------- Detail ---------------------- */
+function openSegment(id){
+  currentSegmentId = id;
+  const s = SEGMENTS.find(x => x.id === id);
+  const container = document.getElementById("detailContainer");
+  const band = confBand(s.confidence);
+
+  const fieldRow = (name, field) => {
+    if(!field || field.c === 0) return `
+      <div class="card-field"><span class="field-name">${name}</span><span class="field-value" style="color:var(--muted);">— no detectado</span></div>`;
+    const b = field.c >= 85 ? "high" : (field.c >= 65 ? "mid" : "low");
+    return `
+      <div class="card-field">
+        <span class="field-name">${name}</span>
+        <span class="field-value">${escapeHtml(field.v)}<span class="conf-pill ${b}">${field.c}%</span></span>
+      </div>`;
+  };
+
+  container.innerHTML = `
+    <div class="segment-detail">
+      <div>
+        <div class="player">
+          <div class="row">
+            <button class="play" onclick="this.textContent = this.textContent==='►' ? '❚❚' : '►'">►</button>
+            <div class="track"><div class="fill" style="width:38%"></div><div class="marker" style="left:38%"></div></div>
+            <span>${escapeHtml(s.time)}</span>
+          </div>
+          <div class="waveform">
+            ${Array.from({length:40}).map((_,i)=>`<span style="height:${8+Math.round(Math.random()*26)}px" class="${i>13&&i<17?'hot':''}"></span>`).join("")}
+          </div>
+        </div>
+        <div class="transcript-box">
+          <strong>${escapeHtml(s.recording)} · ${escapeHtml(s.speaker)} · ${escapeHtml(s.date)} ${escapeHtml(s.time)}</strong><br><br>
+          ${highlightText(s.text, s.highlight)}
+        </div>
+      </div>
+      <div>
+        <div class="panel" style="padding:14px;">
+          <h3 style="margin:0 0 6px;font-size:12.5px;color:var(--muted);text-transform:uppercase;">
+            Extracción estructurada <span style="color:var(--openai-text);">· GPT-4o</span>
+          </h3>
+          ${fieldRow("Instrumento", s.entities.instrumento)}
+          ${fieldRow("Contraparte", s.entities.contraparte)}
+          ${fieldRow("Cantidad", s.entities.cantidad)}
+          ${fieldRow("Valor pactado", s.entities.valor)}
+
+          <div class="corr-box ${s.transactionMatch ? 'match':'nomatch'}">
+            ${s.transactionMatch
+              ? "✅ Coincide con registro transaccional real (instrumento, ventana horaria y contraparte consistentes)."
+              : "⚠️ Sin coincidencia directa en base de operaciones — no se identificó una transacción asociada."}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  switchTab("tab-detail");
+  logCustody(`Investigador abrió segmento #${id} (${s.recording}, ${s.time}) — reproducción de audio`);
+}
+
+/* ---------------------- Tabs ---------------------- */
+function switchTab(tabId){
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tabId));
+  document.querySelectorAll(".tab-content").forEach(c => c.classList.toggle("active", c.id === tabId));
+}
+
+/* ---------------------- Synthesis (MAI-1) ---------------------- */
+function generateSynthesis(){
+  const btn = document.getElementById("genBtn");
+  const status = document.getElementById("genStatus");
+  const reportContainer = document.getElementById("reportContainer");
+  btn.disabled = true;
+  status.innerHTML = `<span class="spinner"></span> Orquestando con Foundry Agent Service · correlacionando evidencia · MAI-1 redactando…`;
+  reportContainer.innerHTML = "";
+  logCustody("Solicitud de síntesis enviada al Foundry Agent Service (modelo: MAI-1)");
+
+  setTimeout(() => {
+    status.textContent = "";
+    btn.disabled = false;
+
+    const report = `El día <strong>14/09/2026</strong>, en el expediente <strong>INV-2026-014</strong>, se identificaron
+    indicios de posible coordinación previa a la apertura de mercado sobre el símbolo <strong>ACSA</strong>.
+    A las 09:32:07, el interlocutor identificado como <strong>C. Mendoza</strong> solicita a
+    <strong>J. Rivas</strong> no mover el precio del instrumento hasta su ingreso con un bloque de
+    120.000 acciones ${cite(1)}, instrucción que es confirmada por J. Rivas, quien indica que el símbolo
+    "no se toca" hasta las 9:45, coincidiendo con la publicación de resultados corporativos a las 10:00 ${cite(2)}.
+    <br><br>
+    A las 09:44:52 se confirma la ejecución del bloque descrito (120.000 acciones a $ 1.842) ${cite(3)},
+    el cual <u>coincide con un registro real en la base de operaciones</u>, reforzando la relación entre
+    la conversación y la transacción ejecutada. Posteriormente, a las 09:45:10, J. Rivas sugiere ajustar
+    el precio objetivo tras la publicación del resultado "para salir antes que el resto" ${cite(4)},
+    lo cual constituye un indicio adicional relevante para la investigación.
+    <br><br>
+    <em>Nota de confianza: los campos "contraparte" y "valor pactado" del segmento #3 presentan confianza
+    media (58–77%) y deben validarse manualmente antes de incorporarse como evidencia.</em>`;
+
+    reportContainer.innerHTML = `
+      <div class="report-box" id="reportBox">${report}</div>
+      <div class="report-footer">
+        <span class="groundedness">📊 Groundedness (evaluación Foundry): <strong>91%</strong> · 4 citas verificadas sobre 4</span>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <button class="btn btn-secondary" onclick="toggleEdit()">✏️ Editar</button>
+          <button class="btn btn-secondary" onclick="exportReport()">⬇️ Exportar informe</button>
+        </div>
+      </div>
+      <div class="review-check">
+        <input type="checkbox" id="reviewedCheck" onchange="onReviewToggle(this)">
+        <label for="reviewedCheck">Revisado y aprobado por el investigador (obligatorio antes de anexar como evidencia)</label>
+      </div>
+    `;
+    logCustody("MAI-1 generó borrador de hallazgos citado (groundedness 91%) — pendiente de revisión humana");
+  }, 1400);
+}
+
+function cite(segId){
+  return `<span class="cite" onclick="openSegment(${segId})" title="Ver evidencia en el segmento">Ver evidencia ${segId}</span>`;
+}
+
+function toggleEdit(){
+  const box = document.getElementById("reportBox");
+  if(box.tagName.toLowerCase() === "div"){
+    const text = box.innerText;
+    const ta = document.createElement("textarea");
+    ta.id = "reportBox";
+    ta.value = text;
+    box.replaceWith(ta);
+    logCustody("Investigador editó manualmente el borrador de síntesis");
+  }
+}
+
+function exportReport(){
+  logCustody("Informe exportado por el investigador (PDF/Word simulado)");
+  alert("Prototipo: en la solución real, esto exporta el informe con citas, metadatos de cadena de custodia y firma del investigador.");
+}
+
+function onReviewToggle(el){
+  logCustody(el.checked ? "Investigador marcó el informe como REVISADO Y APROBADO" : "Investigador desmarcó la aprobación del informe");
+}
+
+/* ---------------------- CRUD: expedientes (casos) ---------------------- */
+function renderCaseTable(){
+  const rows = CASES.map(c => `
+    <tr>
+      <td><strong>${escapeHtml(c.id)}</strong></td>
+      <td>${escapeHtml(c.desc)}</td>
+      <td>${c.active ? "✅" : "—"}</td>
+      <td class="actions">
+        <button class="edit" data-action="edit" data-id="${escapeHtml(c.id)}">✏️ Editar</button>
+        <button class="delete" data-action="delete" data-id="${escapeHtml(c.id)}">🗑️ Eliminar</button>
+      </td>
+    </tr>`).join("");
+  document.getElementById("caseTable").innerHTML = `
+    <thead><tr><th>ID</th><th>Descripción</th><th>Activo</th><th>Acciones</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="4" class="empty-state">Sin expedientes.</td></tr>'}</tbody>`;
+}
+
+function showCaseForm(id){
+  editingCaseId = id ?? null;
+  const c = id ? CASES.find(x => x.id === id) : { id:"", desc:"", active:false };
+  document.getElementById("caseFormWrap").innerHTML = `
+    <form class="mini-form" onsubmit="return saveCaseForm(event)">
+      <label class="full">ID del expediente
+        <input id="cf_id" required value="${escapeHtml(c.id)}" ${id ? "readonly" : ""} placeholder="INV-2026-000">
+      </label>
+      <label class="full">Descripción
+        <input id="cf_desc" required value="${escapeHtml(c.desc)}" placeholder="Descripción breve del expediente">
+      </label>
+      <label class="checkbox-field full" style="flex-direction:row;">
+        <input type="checkbox" id="cf_active" ${c.active ? "checked" : ""}> Marcar como expediente activo
+      </label>
+      <div class="mini-form-actions">
+        <button type="button" class="btn btn-secondary" onclick="hideCaseForm()">Cancelar</button>
+        <button type="submit" class="btn btn-primary">${id ? "Guardar cambios" : "Crear expediente"}</button>
+      </div>
+    </form>`;
+}
+
+function hideCaseForm(){
+  editingCaseId = null;
+  document.getElementById("caseFormWrap").innerHTML = "";
+}
+
+function saveCaseForm(e){
+  e.preventDefault();
+  const id = document.getElementById("cf_id").value.trim();
+  const desc = document.getElementById("cf_desc").value.trim();
+  const active = document.getElementById("cf_active").checked;
+  if(!id || !desc){ alert("ID y descripción son obligatorios."); return false; }
+
+  if(editingCaseId){
+    const c = CASES.find(x => x.id === editingCaseId);
+    c.desc = desc; c.active = active;
+    logCustody(`Investigador editó el expediente ${id}`);
+  } else {
+    if(CASES.some(x => x.id === id)){ alert("Ya existe un expediente con ese ID."); return false; }
+    CASES.push({ id, desc, active });
+    logCustody(`Investigador creó el expediente ${id}`);
+  }
+  saveData();
+  hideCaseForm();
+  renderCases();
+  renderCaseTable();
+  return false;
+}
+
+function deleteCase(id){
+  if(!confirm(`¿Eliminar el expediente ${id}? Esta acción no se puede deshacer.`)) return;
+  CASES = CASES.filter(c => c.id !== id);
+  saveData();
+  renderCases();
+  renderCaseTable();
+  logCustody(`Investigador eliminó el expediente ${id}`);
+}
+
+/* ---------------------- CRUD: segmentos de conversación ---------------------- */
+function renderSegmentTable(){
+  const rows = SEGMENTS.map(s => `
+    <tr>
+      <td>${s.id}</td>
+      <td>${escapeHtml(s.recording)}</td>
+      <td>${escapeHtml(s.speaker)}</td>
+      <td>${escapeHtml(s.symbol)}</td>
+      <td>${escapeHtml(s.date)} ${escapeHtml(s.time)}</td>
+      <td>${s.confidence}%</td>
+      <td style="max-width:260px;">${escapeHtml(s.text.slice(0,80))}${s.text.length>80?"…":""}</td>
+      <td class="actions">
+        <button class="edit" data-action="edit" data-id="${s.id}">✏️ Editar</button>
+        <button class="delete" data-action="delete" data-id="${s.id}">🗑️ Eliminar</button>
+      </td>
+    </tr>`).join("");
+  document.getElementById("segmentTable").innerHTML = `
+    <thead><tr><th>ID</th><th>Grabación</th><th>Hablante</th><th>Símbolo</th><th>Fecha/hora</th><th>Conf.</th><th>Texto</th><th>Acciones</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="8" class="empty-state">Sin segmentos.</td></tr>'}</tbody>`;
+}
+
+function showSegmentForm(id){
+  editingSegmentId = id ?? null;
+  const s = id ? SEGMENTS.find(x => x.id === id) : {
+    recording:"", speaker:"", symbol:"", date:"", time:"", confidence:80, text:"", highlight:"",
+    entities:{ instrumento:{v:"",c:0}, contraparte:{v:"",c:0}, cantidad:{v:"",c:0}, valor:{v:"",c:0} },
+    transactionMatch:false,
+  };
+  document.getElementById("segmentFormWrap").innerHTML = `
+    <form class="mini-form" onsubmit="return saveSegmentForm(event)">
+      <label>Grabación <input id="sf_recording" required value="${escapeHtml(s.recording)}" placeholder="REC-0000"></label>
+      <label>Hablante <input id="sf_speaker" required value="${escapeHtml(s.speaker)}" placeholder="Nombre del hablante"></label>
+      <label>Símbolo <input id="sf_symbol" required value="${escapeHtml(s.symbol)}" placeholder="ACSA"></label>
+      <label>Confianza global (%) <input id="sf_confidence" type="number" min="0" max="100" required value="${s.confidence}"></label>
+      <label>Fecha <input id="sf_date" required value="${escapeHtml(s.date)}" placeholder="DD/MM/AAAA"></label>
+      <label>Hora <input id="sf_time" required value="${escapeHtml(s.time)}" placeholder="HH:MM:SS"></label>
+      <label>Término a resaltar <input id="sf_highlight" value="${escapeHtml(s.highlight)}" placeholder="ACSA"></label>
+      <label class="checkbox-field" style="flex-direction:row;align-self:end;">
+        <input type="checkbox" id="sf_match" ${s.transactionMatch ? "checked" : ""}> Coincide con transacción real
+      </label>
+      <label class="full">Texto de la conversación
+        <textarea id="sf_text" required placeholder="Transcripción del segmento…">${escapeHtml(s.text)}</textarea>
+      </label>
+
+      <label>Instrumento <input id="sf_instr_v" value="${escapeHtml(s.entities.instrumento.v)}"></label>
+      <label>Confianza instrumento (%) <input id="sf_instr_c" type="number" min="0" max="100" value="${s.entities.instrumento.c}"></label>
+      <label>Contraparte <input id="sf_contra_v" value="${escapeHtml(s.entities.contraparte.v)}"></label>
+      <label>Confianza contraparte (%) <input id="sf_contra_c" type="number" min="0" max="100" value="${s.entities.contraparte.c}"></label>
+      <label>Cantidad <input id="sf_cant_v" value="${escapeHtml(s.entities.cantidad.v)}"></label>
+      <label>Confianza cantidad (%) <input id="sf_cant_c" type="number" min="0" max="100" value="${s.entities.cantidad.c}"></label>
+      <label>Valor pactado <input id="sf_valor_v" value="${escapeHtml(s.entities.valor.v)}"></label>
+      <label>Confianza valor (%) <input id="sf_valor_c" type="number" min="0" max="100" value="${s.entities.valor.c}"></label>
+
+      <div class="mini-form-actions">
+        <button type="button" class="btn btn-secondary" onclick="hideSegmentForm()">Cancelar</button>
+        <button type="submit" class="btn btn-primary">${id ? "Guardar cambios" : "Crear segmento"}</button>
+      </div>
+    </form>`;
+}
+
+function hideSegmentForm(){
+  editingSegmentId = null;
+  document.getElementById("segmentFormWrap").innerHTML = "";
+}
+
+function entityField(valId, confId){
+  const v = document.getElementById(valId).value.trim();
+  const c = Number(document.getElementById(confId).value) || 0;
+  return v ? { v, c } : { v:"—", c:0 };
+}
+
+function saveSegmentForm(e){
+  e.preventDefault();
+  const data = {
+    recording: document.getElementById("sf_recording").value.trim(),
+    speaker: document.getElementById("sf_speaker").value.trim(),
+    symbol: document.getElementById("sf_symbol").value.trim(),
+    confidence: Number(document.getElementById("sf_confidence").value),
+    date: document.getElementById("sf_date").value.trim(),
+    time: document.getElementById("sf_time").value.trim(),
+    highlight: document.getElementById("sf_highlight").value.trim(),
+    text: document.getElementById("sf_text").value.trim(),
+    transactionMatch: document.getElementById("sf_match").checked,
+    entities: {
+      instrumento: entityField("sf_instr_v","sf_instr_c"),
+      contraparte: entityField("sf_contra_v","sf_contra_c"),
+      cantidad: entityField("sf_cant_v","sf_cant_c"),
+      valor: entityField("sf_valor_v","sf_valor_c"),
+    },
+  };
+  if(!data.recording || !data.speaker || !data.symbol || !data.date || !data.time || !data.text){
+    alert("Completa los campos obligatorios: grabación, hablante, símbolo, fecha, hora y texto.");
+    return false;
+  }
+  if(!data.highlight) data.highlight = data.symbol;
+
+  if(editingSegmentId){
+    const idx = SEGMENTS.findIndex(x => x.id === editingSegmentId);
+    SEGMENTS[idx] = { ...data, id: editingSegmentId };
+    logCustody(`Investigador editó el segmento #${editingSegmentId}`);
+  } else {
+    const newId = SEGMENTS.length ? Math.max(...SEGMENTS.map(s => s.id)) + 1 : 1;
+    SEGMENTS.push({ ...data, id: newId });
+    logCustody(`Investigador creó el segmento #${newId} (${data.recording})`);
+  }
+  saveData();
+  hideSegmentForm();
+  renderSegmentTable();
+  runSearch();
+  return false;
+}
+
+function deleteSegment(id){
+  if(!confirm(`¿Eliminar el segmento #${id}? Esta acción no se puede deshacer.`)) return;
+  SEGMENTS = SEGMENTS.filter(s => s.id !== id);
+  saveData();
+  renderSegmentTable();
+  runSearch();
+  logCustody(`Investigador eliminó el segmento #${id}`);
+}
+
+/* ---------------------- Custody log ---------------------- */
+function logCustody(msg){
+  const now = new Date();
+  const ts = now.toLocaleTimeString("es-CO", {hour12:false});
+  custody.unshift(`[${ts}] ${msg}`);
+  const ul = document.getElementById("custodyLog");
+  ul.innerHTML = custody.slice(0, 8).map(l => `<li>${l}</li>`).join("");
+}
+
+document.getElementById("searchInput").addEventListener("keydown", e => { if(e.key === "Enter") runSearch(); });
+document.getElementById("filterSpeaker").addEventListener("change", runSearch);
+document.getElementById("filterConfidence").addEventListener("change", runSearch);
+
+init();
+</script>
+</body>
+</html>
