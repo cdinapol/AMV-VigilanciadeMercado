@@ -256,6 +256,55 @@
   }
 
   .empty-state{color:var(--muted);font-size:13px;padding:30px 10px;text-align:center;}
+
+  /* ---------- Arquitectura ---------- */
+  .arch-panel h3{margin:22px 0 10px;font-size:13.5px;color:var(--navy);}
+  .arch-panel h3:first-child{margin-top:0;}
+  .arch-panel p.lead{font-size:12.5px;color:var(--muted);margin:0 0 6px;}
+  .diagram-box{
+    background:#fafbfd;border:1px solid var(--line);border-radius:10px;padding:16px;
+    overflow-x:auto;
+  }
+  .diagram-box .mermaid{display:flex;justify-content:center;min-width:640px;}
+
+  /* ---------- Paso a paso ---------- */
+  .steps{list-style:none;margin:0;padding:0;counter-reset:step;}
+  .steps > li{
+    position:relative;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-left:3px solid var(--navy);
+    border-radius:10px;
+    padding:14px 16px 14px 58px;
+    margin:0 0 12px;
+    box-shadow:var(--shadow);
+  }
+  .steps > li::before{
+    counter-increment:step;
+    content:counter(step);
+    position:absolute;left:14px;top:14px;
+    width:30px;height:30px;border-radius:50%;
+    background:var(--navy);color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:14px;
+  }
+  .steps > li h4{
+    margin:2px 0 6px;font-size:13px;color:var(--navy);font-weight:700;
+  }
+  .steps > li p{margin:0 0 6px;font-size:12.5px;line-height:1.5;color:var(--text);}
+  .steps > li p:last-child{margin-bottom:0;}
+  .steps .svc{
+    display:inline-block;margin-top:6px;padding:3px 9px;border-radius:20px;
+    font-size:10.5px;font-weight:600;border:1.5px solid;
+  }
+  .steps .svc.mai{background:var(--mai-bg);border-color:var(--mai-border);color:var(--mai-text);}
+  .steps .svc.openai{background:var(--openai-bg);border-color:var(--openai-border);color:var(--openai-text);}
+  .steps .svc.azure{background:var(--azure-bg);border-color:var(--azure-border);color:var(--azure-text);}
+  .steps .svc.gov{background:var(--gov-bg);border-color:var(--gov-border);color:var(--gov-text);}
+  .steps code{
+    background:#eef1f7;border:1px solid var(--line);border-radius:5px;
+    padding:1px 5px;font-size:11.5px;color:var(--navy);
+  }
 </style>
 </head>
 <body>
@@ -313,6 +362,7 @@
       <button class="tab-btn" data-tab="tab-detail" onclick="switchTab('tab-detail')">Detalle de segmento</button>
       <button class="tab-btn" data-tab="tab-synth" onclick="switchTab('tab-synth')">Síntesis de hallazgos (MAI)</button>
       <button class="tab-btn" data-tab="tab-manage" onclick="switchTab('tab-manage')">Gestionar datos</button>
+      <button class="tab-btn" data-tab="tab-arch" onclick="switchTab('tab-arch')">Arquitectura</button>
     </div>
 
     <!-- RESULTS TAB -->
@@ -371,6 +421,184 @@
       <button class="btn btn-secondary" onclick="resetDemoData()">↺ Restaurar datos de ejemplo</button>
     </section>
 
+    <!-- ARCHITECTURE TAB -->
+    <section class="tab-content" id="tab-arch">
+      <div class="arch-panel">
+        <h3>Arquitectura de referencia en Azure</h3>
+        <p class="lead">Principio de diseño: arquitectura agnóstica al modelo. MAI-1 se usa únicamente en el componente de síntesis / redacción de hallazgos; el resto se apoya en los servicios recomendados por la matriz de decisión (Azure AI Speech, GPT-4o, text-embedding-3-large).</p>
+        <div class="diagram-box">
+          <div class="mermaid">
+flowchart TB
+    subgraph ING["1. Ingesta"]
+        BLOB[("Azure Blob Storage&lt;br/&gt;Grabaciones crudas")]
+        EG["Event Grid&lt;br/&gt;Disparo por evento"]
+        BLOB --&gt; EG
+    end
+
+    subgraph TRXS["2. Transcripción"]
+        SPEECH["Azure AI Speech (batch)&lt;br/&gt;Timestamps por palabra + diarización"]
+    end
+
+    subgraph ENR["3. Enriquecimiento"]
+        NER["Azure AI Language&lt;br/&gt;Custom NER · detección PII"]
+        EXT["GPT-4o&lt;br/&gt;Extracción estructurada (JSON schema)"]
+        CS["Azure Content Safety"]
+    end
+
+    subgraph IDX["4. Indexación y búsqueda"]
+        EMB["text-embedding-3-large (OpenAI)"]
+        SEARCH[("Azure AI Search&lt;br/&gt;BM25 + vectorial + semantic ranker")]
+    end
+
+    subgraph RAZ["5. Razonamiento y síntesis"]
+        AGENT["Azure AI Foundry Agent Service&lt;br/&gt;Orquestador"]
+        REASON["MAI&lt;br/&gt;Razonamiento (detección de colusión / insider trading)"]
+        CORR["Agent tool: correlación transaccional&lt;br/&gt;vs. base de operaciones"]
+        SYN["MAI-1&lt;br/&gt;Síntesis / redacción de hallazgos"]
+    end
+
+    subgraph WB["6. Workbench del investigador"]
+        UI["App / portal&lt;br/&gt;búsqueda · playback · reporte citado"]
+    end
+
+    subgraph GOV["Gobierno, seguridad y cumplimiento (transversal)"]
+        PURVIEW["Microsoft Purview&lt;br/&gt;clasificación · eDiscovery"]
+        RBAC["Entra ID · RBAC"]
+        AUDIT["Auditoría / cadena de custodia"]
+        EVAL["Evaluaciones Foundry&lt;br/&gt;groundedness"]
+    end
+
+    EG --&gt; SPEECH --&gt; NER --&gt; EXT
+    NER --&gt; CS
+    EXT --&gt; EMB --&gt; SEARCH
+    SEARCH --&gt; AGENT
+    AGENT --&gt; REASON
+    AGENT --&gt; CORR
+    REASON --&gt; SYN
+    CORR --&gt; SYN
+    SYN --&gt; UI
+    SEARCH --&gt; UI
+
+    classDef mai fill:#cff3e9,stroke:#1f9d77,stroke-width:2px,color:#0b3d2e;
+    classDef openaiC fill:#dceefb,stroke:#2e75b6,stroke-width:2px,color:#1b2a4a;
+    classDef infra fill:#f1efea,stroke:#6b6b6b,stroke-width:1.5px,color:#333;
+    classDef gov fill:#e5dff5,stroke:#6a4fb6,stroke-width:1.5px,color:#3b2a63;
+
+    class SYN,REASON mai;
+    class EXT,EMB openaiC;
+    class BLOB,EG,SPEECH,NER,CS,SEARCH,AGENT,CORR,UI infra;
+    class PURVIEW,RBAC,AUDIT,EVAL gov;
+          </div>
+        </div>
+
+        <h3>Diagrama lógico del flujo (una investigación)</h3>
+        <div class="diagram-box">
+          <div class="mermaid">
+sequenceDiagram
+    actor Inv as Investigador
+    participant UI as Workbench (app)
+    participant Search as Azure AI Search
+    participant Agent as Foundry Agent Service
+    participant Corr as Tool: correlación transaccional
+    participant MAI as MAI-1 (síntesis)
+
+    Inv-&gt;&gt;UI: Busca símbolo / palabra clave / hablante
+    UI-&gt;&gt;Search: Consulta híbrida (BM25 + vectorial + semántica)
+    Search--&gt;&gt;UI: Segmentos + timestamp exacto + confianza
+    Inv-&gt;&gt;UI: Reproduce audio, revisa evidencia, selecciona hallazgos
+    UI-&gt;&gt;Agent: Solicita síntesis de hallazgos seleccionados
+    Agent-&gt;&gt;Corr: Correlaciona entidades extraídas vs. operaciones reales
+    Corr--&gt;&gt;Agent: Coincidencias (instrumento, hora, cantidad, contraparte)
+    Agent-&gt;&gt;MAI: Genera borrador de informe (citado, con groundedness)
+    MAI--&gt;&gt;Agent: Texto redactado + referencias a evidencia
+    Agent--&gt;&gt;UI: Informe + enlaces a grabación/timestamp/hablante
+    UI--&gt;&gt;Inv: Revisión humana obligatoria, edición y aprobación
+          </div>
+        </div>
+
+        <h3>Cómo funciona la aplicación paso a paso</h3>
+        <p class="lead">Recorrido de una investigación de principio a fin, tal como lo vive el investigador en el workbench. Cada paso indica qué hace la app y qué servicio de Azure lo impulsaría en la solución real.</p>
+        <ol class="steps">
+          <li>
+            <h4>Ingesta de la grabación</h4>
+            <p>La conversación (llamada, chat de voz, reunión) se deposita como audio crudo y un evento dispara el pipeline automáticamente. En el prototipo esto ya viene precargado como datos de ejemplo.</p>
+            <span class="svc azure">Azure Blob Storage + Event Grid</span>
+          </li>
+          <li>
+            <h4>Transcripción y diarización</h4>
+            <p>El audio se convierte a texto con <em>timestamps por palabra</em> e identificación de cada hablante, generando una confianza global por segmento.</p>
+            <span class="svc azure">Azure AI Speech (batch)</span>
+          </li>
+          <li>
+            <h4>Enriquecimiento y extracción estructurada</h4>
+            <p>Sobre la transcripción se detectan entidades y datos PII, y se extraen campos clave —instrumento, contraparte, cantidad, valor— en formato estructurado, cada uno con su <strong>confianza por campo</strong>.</p>
+            <span class="svc azure">Azure AI Language</span>
+            <span class="svc openai">GPT-4o (JSON schema)</span>
+          </li>
+          <li>
+            <h4>Indexación para búsqueda híbrida</h4>
+            <p>Los segmentos enriquecidos se vectorizan y se cargan a un índice que combina búsqueda por palabra clave, vectorial y ranking semántico.</p>
+            <span class="svc openai">text-embedding-3-large</span>
+            <span class="svc azure">Azure AI Search</span>
+          </li>
+          <li>
+            <h4>Búsqueda del investigador</h4>
+            <p>Desde la barra lateral el investigador consulta por <strong>símbolo, palabra clave o hablante</strong> y filtra por banda de confianza. La pestaña <em>Resultados de búsqueda</em> muestra los segmentos coincidentes con las palabras resaltadas.</p>
+            <p>En el prototipo: función <code>runSearch()</code> filtrando en memoria.</p>
+            <span class="svc azure">Azure AI Search</span>
+          </li>
+          <li>
+            <h4>Revisión de evidencia en el detalle</h4>
+            <p>Al abrir un segmento (<em>Detalle de segmento</em>) se ve el reproductor simulado, la transcripción resaltada y la ficha de campos extraídos con su porcentaje de confianza codificado por color.</p>
+            <p>En el prototipo: función <code>openSegment(id)</code>.</p>
+            <span class="svc azure">Azure AI Speech</span>
+            <span class="svc openai">GPT-4o</span>
+          </li>
+          <li>
+            <h4>Correlación transaccional</h4>
+            <p>Las entidades extraídas se cruzan contra la base de operaciones reales para confirmar coincidencias de instrumento, hora, cantidad y contraparte. El resultado se marca en verde (coincide) o rojo (sin coincidencia).</p>
+            <span class="svc azure">Agent tool / function</span>
+          </li>
+          <li>
+            <h4>Síntesis y redacción de hallazgos</h4>
+            <p>El investigador solicita la síntesis (pestaña <em>Síntesis de hallazgos</em>); el orquestador razona sobre la evidencia seleccionada y redacta un <strong>borrador de informe citado</strong>, con un valor de <em>groundedness</em>. Cada afirmación enlaza de vuelta a la grabación, el timestamp y el hablante.</p>
+            <p>En el prototipo: función <code>generateSynthesis()</code> con citas <code>cite()</code>.</p>
+            <span class="svc gov">Foundry Agent Service</span>
+            <span class="svc mai">MAI-1 (síntesis)</span>
+          </li>
+          <li>
+            <h4>Revisión humana y aprobación</h4>
+            <p>El borrador <strong>no es evidencia</strong> hasta que el investigador lo revisa, edita si es necesario y lo marca como aprobado. El human-in-the-loop es obligatorio.</p>
+            <p>En el prototipo: <code>onReviewToggle()</code> y <code>toggleEdit()</code>.</p>
+            <span class="svc gov">Revisión humana</span>
+          </li>
+          <li>
+            <h4>Cadena de custodia</h4>
+            <p>Cada acción —búsqueda, apertura, generación, edición, exportación y aprobación— queda registrada con hora en el panel inferior, sentando la base para el valor probatorio.</p>
+            <p>En el prototipo: función <code>logCustody()</code>.</p>
+            <span class="svc gov">Auditoría · Purview · Entra ID</span>
+          </li>
+        </ol>
+
+        <h3>Artefactos de Azure necesarios por capa</h3>
+        <table class="data-table">
+          <thead><tr><th>Capa</th><th>Componente</th><th>Servicio / modelo</th><th>Estado</th></tr></thead>
+          <tbody>
+            <tr><td>Ingesta</td><td>Almacenamiento y disparo</td><td>Azure Blob Storage + Event Grid</td><td>Infraestructura</td></tr>
+            <tr><td>Transcripción</td><td>Speech-to-text, diarización</td><td><strong>Azure AI Speech</strong> (batch)</td><td>Recomendado (maduro)</td></tr>
+            <tr><td>Enriquecimiento</td><td>Entidades / PII</td><td>Azure AI Language (Custom NER)</td><td>Recomendado</td></tr>
+            <tr><td>Enriquecimiento</td><td>Extracción estructurada (instrumento, contraparte, cantidad, valor)</td><td><strong>GPT-4o</strong> (JSON schema)</td><td>Recomendado</td></tr>
+            <tr><td>Búsqueda</td><td>Embeddings semánticos</td><td><strong>text-embedding-3-large</strong> (OpenAI)</td><td>Recomendado</td></tr>
+            <tr><td>Búsqueda</td><td>Índice híbrido</td><td>Azure AI Search (BM25 + vector + semantic ranker)</td><td>Infraestructura</td></tr>
+            <tr><td>Razonamiento</td><td>Detección de colusión / insider trading</td><td><strong>MAI</strong></td><td></td></tr>
+            <tr><td>Correlación</td><td>Cruce con base de operaciones</td><td>Agent tools/functions</td><td>Infraestructura</td></tr>
+            <tr><td><strong>Síntesis / redacción de hallazgos</strong></td><td>Borrador de informe con citas</td><td><strong>MAI-1</strong></td><td><strong>Fijado para este prototipo</strong></td></tr>
+            <tr><td>Gobierno</td><td>Seguridad, trazabilidad, cumplimiento</td><td>Content Safety, Purview, Entra ID, evaluaciones Foundry</td><td>Transversal</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <div class="custody-log">
       <strong>Cadena de custodia (registro de auditoría)</strong>
       <ul id="custodyLog"></ul>
@@ -384,6 +612,7 @@
   GPT-4o · Azure AI Search · Azure AI Foundry Agent Service · MAI-1 · Microsoft Purview.
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <script>
 /* ---------------------- Mock data (seed / valores de fábrica) ---------------------- */
 const LS_CASES = "amv_demo_cases_v1";
@@ -635,6 +864,23 @@ function openSegment(id){
 function switchTab(tabId){
   document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tabId));
   document.querySelectorAll(".tab-content").forEach(c => c.classList.toggle("active", c.id === tabId));
+  if(tabId === "tab-arch") renderArchDiagrams();
+}
+
+let archRendered = false;
+async function renderArchDiagrams(){
+  if(archRendered || typeof mermaid === "undefined") return;
+  archRendered = true;
+  mermaid.initialize({
+    startOnLoad:false, theme:"base", securityLevel:"loose",
+    themeVariables:{ fontFamily:"Segoe UI, Arial, sans-serif", primaryColor:"#eef1fa", primaryBorderColor:"#1b2a4a", primaryTextColor:"#27324a", lineColor:"#6b7488" },
+  });
+  try{
+    await mermaid.run({ nodes: document.querySelectorAll("#tab-arch .mermaid") });
+    logCustody("Diagrama de arquitectura renderizado");
+  }catch(err){
+    console.error("Error al renderizar diagramas Mermaid:", err);
+  }
 }
 
 /* ---------------------- Synthesis (MAI-1) ---------------------- */
